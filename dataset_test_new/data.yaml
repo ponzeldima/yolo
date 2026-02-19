@@ -1,0 +1,13 @@
+train: /Users/dima_ponzel/Desktop/KNU/ML/TestProjects/1/dataset_test_new/train/images
+val: /Users/dima_ponzel/Desktop/KNU/ML/TestProjects/1/dataset_test_new/valid/images
+test: ../test/images
+
+nc: 1
+names: ['Gerbera']
+
+roboflow:
+  workspace: test-tnsd2
+  project: yolo-swaqy
+  version: 5
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/test-tnsd2/yolo-swaqy/dataset/5

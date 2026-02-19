@@ -1,0 +1,1 @@
+ yolo predict model=runs/detect/shahed_local/run14/weights/best.pt source=shahed_test_5.mp4 show=True - test on video
