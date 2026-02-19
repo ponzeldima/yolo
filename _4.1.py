@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- 1. Визначення функцій належності (Membership Functions) ---
-
+ 
 def mu_trapezoid(x, a, b, c, d):
     """Трапецієподібна функція належності"""
     y = np.zeros_like(x, dtype=float)
@@ -27,7 +27,7 @@ def mu_rising(x, left, right):
     y = np.zeros_like(x, dtype=float)
     mask = (x >= left) & (x <= right)
     y[mask] = (x[mask] - left) / (right - left)
-    return np.clip(y, 0, 1)
+    return np.c~lip(y, 0, 1)
 
 def mu_falling(x, left, right):
     """Спадний сегмент (установа Д)"""
