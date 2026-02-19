@@ -6,6 +6,7 @@ from itertools import product
 from typing import Iterable
 
 
+
 @dataclass(frozen=True)
 class FuzzyTrapezoid:
     """
