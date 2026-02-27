@@ -4,6 +4,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 from ultralytics import YOLO
 import torch
+print(torch.__version__)
 # import tensorflow as tf
 
 # --- Функція, що спрацьовує в кінці кожної епохи ---
@@ -40,17 +41,17 @@ if __name__ == '__main__':
     
     # 2. Вказуємо шлях до ВАШОГО локального data.yaml
     # Важливо: використовуйте повний шлях або переконайтеся, що файл поруч
-    data_path = '/Users/dima_ponzel/Desktop/KNU/ML/TestProjects/1/dataset_test_98/data.yaml' 
+    data_path = 'C:\\Users\\ponze\\Desktop\ML\\yolo\\dataset_test_244\\data.yaml' 
 
     # 3. Запускаємо навчання
     results = model.train(
         data=data_path,
-        epochs=50,             # Для тесту почніть з 50
+        epochs=100,             # Для тесту почніть з 50
         imgsz=640,
-        batch=8,              # Якщо мало відеопам'яті - ставте 8 або 4
-        device='cpu',              # 0 для GPU, 'cpu' для процесора
+        batch=16,              # Якщо мало відеопам'яті - ставте 8 або 4
+        device=0,              # 0 для GPU, 'cpu' для процесора
         workers=0,             # Для локального запуску на Windows краще 0 (стабільніше)
-        project='test_98_local',
+        project='test_244_local',
         name='run1',
         plots=True
     )

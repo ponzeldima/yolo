@@ -1,0 +1,13 @@
+train: C:\Users\ponze\Desktop\ML\yolo\dataset_test_244\train\images
+val: C:\Users\ponze\Desktop\ML\yolo\dataset_test_244\valid\images
+test: ../test/images
+
+nc: 1
+names: ['Gerbera']
+
+roboflow:
+  workspace: test-tnsd2
+  project: yolo-swaqy
+  version: 8
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/test-tnsd2/yolo-swaqy/dataset/8

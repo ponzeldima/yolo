@@ -1,5 +1,5 @@
-train: /Users/dima_ponzel/Desktop/KNU/ML/TestProjects/1/dataset_test_new/train/images
-val: /Users/dima_ponzel/Desktop/KNU/ML/TestProjects/1/dataset_test_new/valid/images
+train: C:\Users\ponze\Desktop\ML\yolo\dataset_test_new\train\images
+val: C:\Users\ponze\Desktop\ML\yolo\dataset_test_new\valid\images
 test: ../test/images
 
 nc: 1
