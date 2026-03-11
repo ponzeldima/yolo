@@ -1,0 +1,30 @@
+{
+  "source_dataset": "dataset_test_244",
+  "output_dataset": "datasets/fomo/dataset_test_244-fomo",
+  "image_size": 96,
+  "grid_size": 12,
+  "num_classes_total": 2,
+  "class_names": [
+    "background",
+    "Gerbera"
+  ],
+  "splits": {
+    "train": {
+      "images": 609,
+      "labels": 609
+    },
+    "valid": {
+      "images": 41,
+      "labels": 41
+    }
+  },
+  "label_format": {
+    "type": "npy",
+    "shape": [
+      12,
+      12,
+      2
+    ],
+    "channels": "0=background, 1..N=classes"
+  }
+}
