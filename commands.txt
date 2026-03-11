@@ -1,1 +1,15 @@
+ Відео
+ 
  yolo predict model=runs/detect/shahed_local/run14/weights/best.pt source=shahed_test_5.mp4 show=True - test on video
+
+ Перегляд у вікні:
+python visualize_fomo_video.py --video shahed_test_2.MP4 --draw both --threshold 0.45
+
+Лише центр:
+python visualize_fomo_video.py --video shahed_test_2.MP4 --draw center --threshold 0.45
+
+Перегляд + збереження:
+python visualize_fomo_video.py --video shahed_test_2.MP4 --draw both --save runs/fomo/shahed_test_2_overlay.mp4
+
+Якщо треба явно вказати модель/мета:
+python visualize_fomo_video.py --video shahed_test_2.MP4 --model fomo_model.keras --meta fomo_dataset.json

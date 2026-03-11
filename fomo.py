@@ -9,7 +9,7 @@ from tensorflow.keras.models import Model
 
 FOMO_DATASET_DIR = Path(__file__).resolve().parent / "datasets" / "fomo" / "dataset_test_244-fomo"
 BATCH_SIZE = 16
-EPOCHS = 20
+EPOCHS = 200
 
 
 class EpochMetricsPrinter(Callback):
