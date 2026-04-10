@@ -1,7 +1,12 @@
 datasets/minst
-
+datasets/food-101
+datasets/uncrashed_cars.v2i.yolov8
 # Byte-compiled / optimized / DLL files
 
+runs/
+
+cars.mp4
+cars2.mp4
 
 __pycache__/
 *.py[codz]
