@@ -39,16 +39,15 @@ import keyboard
 import vgamepad as vg
 import pygame
 from ultralytics import YOLO
-from simple_pid import PID
 
 # ── Налаштування ────────────────────────────────────────────────────────────
 
 WINDOW_TITLE = "Uncrashed"
-MODEL_PATH = "runs/detect/runs/detect/uncrashed_cars9/weights/best.engine"  # шлях до TensorRT моделі (експорт з train_uncrashed.py)
-# MODEL_PATH = "yolov8n.engine"  # шлях до TensorRT моделі (експорт з train_uncrashed.py)
-CAR_CLASS_ID = 0
+# MODEL_PATH = "runs/detect/runs/detect/uncrashed_cars9/weights/best.engine"  # шлях до TensorRT моделі (експорт з train_uncrashed.py)
+MODEL_PATH = "yolov8s.pt"  # шлях до TensorRT моделі (експорт з train_uncrashed.py)
+CAR_CLASS_ID = 2
 CONFIDENCE_THRESHOLD = 0.20
-IMGSZ = 640  # розмір інференсу (менше = швидше, 640→384 ≈ +60% FPS)
+IMGSZ = 960  # розмір інференсу (менше = швидше, 640→384 ≈ +60% FPS)
 
 # Режим візуалізації: "overlay" = поверх гри (borderless/windowed), "window" = окреме вікно
 DISPLAY_MODE = "overlay"  # "overlay" | "window"
@@ -62,6 +61,92 @@ BBOX_COLOR_LOCKED = (0, 165, 255)
 BBOX_THICKNESS = 2
 LINE_COLOR = (255, 255, 0)
 LINE_THICKNESS = 2
+
+# ── Автонаведення + таран (PID + фази атаки) ───────────────────────────────
+# Дрон працює в режимі ACRO: стіки задають ШВИДКІСТЬ ОБЕРТАННЯ, не кут.
+# Коли стік = 0, дрон тримає поточний кут (не вирівнюється).
+# Yaw   → швидкість повороту вліво/вправо
+# Pitch → швидкість нахилу вперед/назад (НЕ тримати — дрон перекрутиться!)
+# Throttle → тяга
+
+# PID для YAW (горизонтальне наведення — yaw rate)
+PID_YAW_KP = 0.6
+PID_YAW_KI = 0.02
+PID_YAW_KD = 0.12
+
+# PID для THROTTLE (вертикальне наведення)
+PID_THR_KP = 0.5
+PID_THR_KI = 0.02
+PID_THR_KD = 0.10
+
+# PID для PITCH (керує pitch rate щоб тримати ціль в центрі по Y + додає нахил вперед)
+# В Acro: ціль нижче центру → нахилити вперед (pitch rate +), вище → назад (-)
+PID_PITCH_KP = 0.25
+PID_PITCH_KI = 0.01
+PID_PITCH_KD = 0.08
+
+# Базовий газ
+BASE_THROTTLE_NORM = 0.40
+
+# EMA-згладжування виходу (0..1, менше = плавніше)
+SMOOTH_ALPHA = 0.3
+
+# Базовий pitch rate вперед (постійно підкручує дрон вперед, щоб летіти до цілі)
+# В Acro це RATE, не кут! Маленьке значення = повільно нахиляється
+BASE_PITCH_RATE        = 0.06    # постійна добавка pitch вперед
+PHASE_ATTACK_RATIO     = 0.12    # bbox > 12% екрану → атака
+PHASE_ATTACK_PITCH_ADD = 0.10    # додатковий pitch rate в атаці
+PHASE_TERMINAL_RATIO   = 0.28    # bbox > 28% екрану → термінальна
+PHASE_TERMINAL_PITCH_ADD = 0.20  # агресивний pitch rate для тарану
+
+# Максимальні значення PID-виходу
+PID_OUTPUT_MAX = 0.5
+PID_PITCH_MAX  = 0.3   # макс pitch rate від PID (щоб не перекрутити дрон)
+
+
+class PIDController:
+    """Дискретний PID-регулятор з anti-windup."""
+
+    def __init__(self, kp: float, ki: float, kd: float, output_max: float = 1.0):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.output_max = output_max
+        self._integral = 0.0
+        self._prev_error = 0.0
+        self._prev_time = None
+
+    def reset(self):
+        self._integral = 0.0
+        self._prev_error = 0.0
+        self._prev_time = None
+
+    def update(self, error: float) -> float:
+        now = time.perf_counter()
+        if self._prev_time is None:
+            self._prev_time = now
+            self._prev_error = error
+            return self.kp * error  # перший кадр — тільки P
+
+        dt = now - self._prev_time
+        if dt < 1e-6:
+            return 0.0
+        self._prev_time = now
+
+        # P
+        p = self.kp * error
+        # I з anti-windup
+        self._integral += error * dt
+        i_limit = self.output_max / max(self.ki, 1e-9)
+        self._integral = max(-i_limit, min(i_limit, self._integral))
+        i = self.ki * self._integral
+        # D
+        d = self.kd * (error - self._prev_error) / dt
+        self._prev_error = error
+
+        out = p + i + d
+        return max(-self.output_max, min(self.output_max, out))
+
 
 # ── Маппінг фізичного контролера (pygame axes) ─────────────────────────────
 # Підстав індекси осей свого контролера. Дізнатися можна запустивши:
@@ -77,43 +162,6 @@ INVERT_ROLL     = False
 INVERT_PITCH    = False
 INVERT_THROTTLE = False
 INVERT_YAW      = False
-
-# ── PID параметри ───────────────────────────────────────────────────────────
-
-PID_ROLL_KP = 0.3
-PID_ROLL_KI = 0.02
-PID_ROLL_KD = 0.1
-
-PID_PITCH_KP = 0.25
-PID_PITCH_KI = 0.015
-PID_PITCH_KD = 0.15
-
-# Yaw (lівий стік X) — обертання на ціль по горизонталі
-PID_YAW_KP = 0.2
-PID_YAW_KI = 0.01
-PID_YAW_KD = 0.05
-
-# Throttle PID (автоматичний газ залежно від відстані до цілі)
-# error_size = розмір bbox відносно екрану (0..1). Більший bbox = ближче = менше газу.
-THROTTLE_BASE = 0.28       # базовий газ (тримати висоту)
-THROTTLE_APPROACH = 0.12   # додатковий газ при наближенні (скалюється за відстанню)
-THROTTLE_MAX = 0.50        # макс газ в авторежимі
-TARGET_SIZE_CLOSE = 0.25   # bbox/екран > це значення = ціль близько, менше газу
-THROTTLE_ERROR_CUT = 0.5   # при вертикальній помилці > цього — різко зменшити газ
-
-# Кількість кадрів grace period: якщо ціль зникла, чекаємо стільки кадрів перед відміною.
-GRACE_FRAMES = 45  # ~0.8с при 55 inferFPS
-
-# Макс. відхилення стіка (0..1). 0.3 = 30% — дрон не зможе перевернутися.
-MAX_STICK = 0.3
-
-# Експоненціальне згладжування: чим ближче ціль до центру, тим повільніше реакція.
-# error підноситься до степеня EXPO (>1 = повільніше поблизу центру)
-EXPO = 1.5
-
-# Rate limiter: макс зміна стіка за кадр (плавність руху)
-RATE_LIMIT = 0.08
-
 
 # ── Прозорий overlay поверх гри (Win32) ────────────────────────────────────
 
@@ -278,29 +326,6 @@ class GameOverlay:
             pass
 
 
-# ── PID контролер ───────────────────────────────────────────────────────────
-
-def expo_curve(error: float, exp: float = EXPO) -> float:
-    """Експо-крива: зберігає знак, але зменшує реакцію поблизу нуля."""
-    sign = 1.0 if error >= 0 else -1.0
-    return sign * (abs(error) ** exp)
-
-
-class RateLimiter:
-    """Обмежує швидкість зміни значення для плавного керування."""
-    def __init__(self, max_rate: float):
-        self.max_rate = max_rate
-        self.prev = 0.0
-
-    def __call__(self, value: float) -> float:
-        delta = max(-self.max_rate, min(self.max_rate, value - self.prev))
-        self.prev += delta
-        return self.prev
-
-    def reset(self):
-        self.prev = 0.0
-
-
 # ── Фізичний контролер (pygame) ─────────────────────────────────────────────
 
 def init_physical_joystick() -> pygame.joystick.JoystickType | None:
@@ -441,53 +466,59 @@ def main() -> None:
     gamepad.update()
     time.sleep(0.5)
 
+    # ── PID контролери для автонаведення ──
+    pid_yaw = PIDController(PID_YAW_KP, PID_YAW_KI, PID_YAW_KD, PID_OUTPUT_MAX)
+    pid_thr = PIDController(PID_THR_KP, PID_THR_KI, PID_THR_KD, PID_OUTPUT_MAX)
+    pid_pitch = PIDController(PID_PITCH_KP, PID_PITCH_KI, PID_PITCH_KD, PID_PITCH_MAX)
+    # EMA-згладжені значення стіків
+    _smooth_yaw = 0.0
+    _smooth_thr = -1.0  # стартуємо з 0 газу
+    _smooth_pitch = 0.0
+
     # ── Стан ──
-    auto_mode = False
+    # Режими: MANUAL → LOCK → AUTO → MANUAL
+    # MANUAL: passthrough джойстіка, підсвічує найближчу машину
+    # LOCK:   ціль залоковано, трекінг працює, але керування з джойстіка
+    # AUTO:   автонаведення + таран
+    flight_mode = "MANUAL"      # MANUAL | LOCK | AUTO
     locked_track_id = None
-    closest_track_id = None     # найближча машина в MANUAL (для локу при перемиканні)
-    frames_without_target = 0  # лічильник grace period
-    last_target = None          # остання відома позиція цілі
-
-    pid_roll = PID(PID_ROLL_KP, PID_ROLL_KI, PID_ROLL_KD,
-                   setpoint=0, output_limits=(-MAX_STICK, MAX_STICK),
-                   sample_time=None, differential_on_measurement=True)
-    pid_pitch = PID(PID_PITCH_KP, PID_PITCH_KI, PID_PITCH_KD,
-                    setpoint=0, output_limits=(-MAX_STICK, MAX_STICK),
-                    sample_time=None, differential_on_measurement=True)
-    pid_yaw = PID(PID_YAW_KP, PID_YAW_KI, PID_YAW_KD,
-                  setpoint=0, output_limits=(-MAX_STICK, MAX_STICK),
-                  sample_time=None, differential_on_measurement=True)
-
-    rl_roll = RateLimiter(RATE_LIMIT)
-    rl_pitch = RateLimiter(RATE_LIMIT)
-    rl_yaw = RateLimiter(RATE_LIMIT)
+    closest_track_id = None
+    lost_since = None
+    LOST_TIMEOUT = 1.0
+    attack_phase = "SEARCH"
 
     def switch_to_manual():
-        nonlocal auto_mode, locked_track_id, frames_without_target, last_target
-        auto_mode = False
+        nonlocal flight_mode, locked_track_id, lost_since, attack_phase
+        flight_mode = "MANUAL"
         locked_track_id = None
-        frames_without_target = 0
-        last_target = None
-        pid_roll.reset()
-        pid_pitch.reset()
+        lost_since = None
+        attack_phase = "SEARCH"
         pid_yaw.reset()
-        rl_roll.reset()
-        rl_pitch.reset()
-        rl_yaw.reset()
+        pid_thr.reset()
+        pid_pitch.reset()
         print("\n[MODE] MANUAL — passthrough фізичного контролера")
 
     def toggle_mode(_event=None):
-        nonlocal auto_mode, locked_track_id
-        if auto_mode:
-            switch_to_manual()
-        else:
-            auto_mode = True
-            # Лок на найближчу машину з MANUAL режиму
+        nonlocal flight_mode, locked_track_id, attack_phase
+        if flight_mode == "MANUAL":
+            # MANUAL → LOCK: локуємо найближчу машину
             if closest_track_id is not None:
+                flight_mode = "LOCK"
                 locked_track_id = closest_track_id
-                print(f"\n[MODE] AUTO — захоплено ID={locked_track_id}")
+                print(f"\n[MODE] LOCK — ціль ID={locked_track_id} залоковано, керування з джойстіка")
             else:
-                print("\n[MODE] AUTO — чекаю ціль для захоплення...")
+                print("\n[НЕМАЄ ЦІЛІ] Немає машини для локу")
+        elif flight_mode == "LOCK":
+            # LOCK → AUTO: атакуємо залоковану ціль
+            flight_mode = "AUTO"
+            attack_phase = "APPROACH"
+            pid_yaw.reset()
+            pid_thr.reset()
+            pid_pitch.reset()
+            print(f"\n[MODE] AUTO — атака на ID={locked_track_id}!")
+        elif flight_mode == "AUTO":
+            # AUTO → MANUAL: скидаємо все
+            switch_to_manual()
 
     keyboard.on_press_key("space", toggle_mode)
 
@@ -499,8 +530,8 @@ def main() -> None:
     keyboard.on_press_key("q", on_quit)
 
     print(f"[INFO] Вікно '{WINDOW_TITLE}': {width}x{height}")
-    print("[INFO] ПРОБІЛ — перемкнути MANUAL / AUTO")
-    print("[INFO] 'q' у вікні OpenCV — вихід")
+    print("[INFO] ПРОБІЛ — MANUAL → LOCK → AUTO → MANUAL")
+    print("[INFO] 'q' — вихід")
     print("[INFO] В Uncrashed прив'яжи керування до Xbox 360 Controller!\n")
     print("[MODE] MANUAL — passthrough фізичного контролера\n")
 
@@ -519,12 +550,15 @@ def main() -> None:
                 time.sleep(0.001)
                 continue
             # --- Попередній ресайз для максимального FPS ---
-            if f.shape[0] != IMGSZ or f.shape[1] != IMGSZ:
-                f = cv2.resize(f, (IMGSZ, IMGSZ), interpolation=cv2.INTER_LINEAR)
+            # if f.shape[0] != IMGSZ or f.shape[1] != IMGSZ:
+            #     f = cv2.resize(f, (IMGSZ, IMGSZ), interpolation=cv2.INTER_LINEAR)
             t = time.perf_counter()
             res = model.track(f, verbose=False, conf=CONFIDENCE_THRESHOLD,
                               classes=[CAR_CLASS_ID], device="cuda", persist=True,
                               imgsz=IMGSZ, half=True)
+            # res = model.predict(f, verbose=False, conf=CONFIDENCE_THRESHOLD,
+            #                   classes=[CAR_CLASS_ID], device="cuda",
+            #                   imgsz=IMGSZ, half=True)
             dt = time.perf_counter() - t
             _infer_fps = 1.0 / (dt + 1e-9)
             with _infer_lock:
@@ -543,13 +577,10 @@ def main() -> None:
     _prof_overlay = 0.0
     _prof_total = 0.0
     _prof_n = 0
-    prev_infer_seq = 0
     try:
         while True:
             t0 = time.perf_counter()
             frame_count += 1
-            roll = pitch = yaw = 0.0
-            auto_throttle = THROTTLE_BASE
 
             if frame_count % 600 == 0:
                 updated = find_window_rect(WINDOW_TITLE)
@@ -578,89 +609,129 @@ def main() -> None:
                 time.sleep(0.001)
                 continue  # ще немає першого результату
 
-            new_infer = (infer_seq != prev_infer_seq)
-            prev_infer_seq = infer_seq
-
             # ── Вибір цілі ──
             t_logic = time.perf_counter()
             all_cars = get_all_cars(results)
             target = None
+            auto_mode = (flight_mode == "AUTO")
 
             if auto_mode:
                 if locked_track_id is not None:
-                    # Шукаємо ТІЛЬКИ залочену ціль
                     target = find_car_by_track_id(results, locked_track_id)
                     if target is not None:
-                        frames_without_target = 0
-                        last_target = target
+                        lost_since = None
                     else:
-                        if new_infer:
-                            frames_without_target += 1
-                        if frames_without_target <= GRACE_FRAMES:
-                            target = last_target
-                        else:
-                            print(f"\n[ВТРАТА] Ціль ID={locked_track_id} зникла на {GRACE_FRAMES} кадрів → MANUAL")
+                        if lost_since is None:
+                            lost_since = time.perf_counter()
+                        if (time.perf_counter() - lost_since) >= LOST_TIMEOUT:
+                            print(f"\n[ВТРАТА] Ціль ID={locked_track_id} зникла на {LOST_TIMEOUT}с → MANUAL")
                             switch_to_manual()
-                else:
-                    # Ще не залочили — беремо найближчу до центру
-                    closest = pick_closest_to_center(all_cars, cx_screen, cy_screen)
-                    if closest is not None:
-                        locked_track_id = closest[5]
-                        target = closest[:5]
-                        last_target = target
-                        frames_without_target = 0
-                        print(f"\n[ЗАХОПЛЕНО] Ціль ID={locked_track_id}")
 
-            if not auto_mode:
-                # MANUAL: відстежуємо найближчу до центру для стрілки і майбутнього локу
+            elif flight_mode == "LOCK":
+                # LOCK: трекінг цілі, але керування з джойстіка
+                if locked_track_id is not None:
+                    target = find_car_by_track_id(results, locked_track_id)
+                    if target is not None:
+                        lost_since = None
+                    else:
+                        if lost_since is None:
+                            lost_since = time.perf_counter()
+                        if (time.perf_counter() - lost_since) >= LOST_TIMEOUT:
+                            print(f"\n[ВТРАТА] Ціль ID={locked_track_id} зникла → MANUAL")
+                            switch_to_manual()
+
+            else:
+                # MANUAL: підсвічуємо найближчу
                 closest = pick_closest_to_center(all_cars, cx_screen, cy_screen)
                 if closest is not None:
                     closest_track_id = closest[5]
-                    target = closest[:5]  # для стрілки
+                    target = closest[:5]
                 else:
                     closest_track_id = None
 
             # ── Керування геймпадом ──
-            if auto_mode:
-                if target is not None:
-                    x1, y1, x2, y2, conf = target
-                    # --- автонаведення: error_x/y у координатах IMGSZ (детекції) ---
-                    cx_target = (x1 + x2) // 2
-                    cy_target = (y1 + y2) // 2
-                    error_x = (cx_target - (IMGSZ // 2)) / (IMGSZ // 2)
-                    error_y = (cy_target - (IMGSZ // 2)) / (IMGSZ // 2)
-
-                    # simple-pid: error = setpoint(0) - input, тому передаємо -expo
-                    roll = rl_roll(pid_roll(-expo_curve(error_x)))
-                    pitch = rl_pitch(pid_pitch(-expo_curve(error_y)))
-                    yaw = rl_yaw(pid_yaw(-expo_curve(error_x)))
-
-
-
-                    # Авто-газ: базовий + додатковий залежно від відстані
-                    bbox_h = (y2 - y1) / IMGSZ  # відн. розмір bbox у просторі моделі
-                    # Якщо bbox маленький (далеко) → більше газу, якщо великий (близько) → менше
-                    distance_factor = max(0.0, 1.0 - bbox_h / TARGET_SIZE_CLOSE)
-                    auto_throttle = min(THROTTLE_MAX, THROTTLE_BASE + THROTTLE_APPROACH * distance_factor)
-
-                    # Зменшуємо газ при великій вертикальній помилці (щоб не пролітати над ціллю)
-                    vert_error_abs = abs(error_y)
-                    if vert_error_abs > THROTTLE_ERROR_CUT:
-                        auto_throttle *= max(0.3, 1.0 - (vert_error_abs - THROTTLE_ERROR_CUT))
-                else:
-                    roll = rl_roll(0.0)
-                    pitch = rl_pitch(0.0)
-                    yaw = rl_yaw(0.0)
-                    auto_throttle = THROTTLE_BASE  # тримаємо висоту
-
-                throttle_stick = -1.0 + auto_throttle * 2.0
-                gamepad.right_joystick_float(x_value_float=roll, y_value_float=pitch)
-                gamepad.left_joystick_float(x_value_float=yaw, y_value_float=throttle_stick)
-            else:
-                # MANUAL — passthrough фізичного контролера
+            if flight_mode != "AUTO":
                 p_roll, p_pitch, p_throttle, p_yaw = read_physical(physical_joy)
-                gamepad.right_joystick_float(x_value_float=p_roll, y_value_float=p_pitch)
-                gamepad.left_joystick_float(x_value_float=p_yaw, y_value_float=p_throttle)
+
+            if auto_mode and target is not None:
+                # ── АВТОНАВЕДЕННЯ + ТАРАН ──
+                x1, y1, x2, y2, conf = target
+                cx_target = (x1 + x2) // 2
+                cy_target = (y1 + y2) // 2
+                bbox_w = x2 - x1
+                bbox_h = y2 - y1
+                bbox_ratio = bbox_w / max(width, 1)  # розмір цілі відносно екрану
+
+                # Нормалізована похибка: -1..+1 (де 0 = центр екрану)
+                err_x = (cx_target - cx_screen) / (width / 2)    # >0 = ціль справа
+                err_y = (cy_target - cy_screen) / (height / 2)   # >0 = ціль знизу
+
+                # --- Визначення фази атаки ---
+                if bbox_ratio >= PHASE_TERMINAL_RATIO:
+                    attack_phase = "TERMINAL"
+                elif bbox_ratio >= PHASE_ATTACK_RATIO:
+                    attack_phase = "ATTACK"
+                else:
+                    attack_phase = "APPROACH"
+
+                # --- PID: yaw для горизонтального наведення ---
+                yaw_cmd = pid_yaw.update(err_x)
+
+                # --- PID: throttle для вертикального наведення ---
+                # err_y > 0 → ціль нижче центру → дрон занадто високо → менше газу
+                # err_y < 0 → ціль вище центру → дрон занадто низько → більше газу
+                thr_correction = pid_thr.update(err_y)
+                base_thr_stick = -1.0 + BASE_THROTTLE_NORM * 2.0
+                throttle_raw = base_thr_stick - thr_correction
+                throttle_raw = max(-1.0, min(1.0, throttle_raw))
+
+                # --- PID: pitch rate (ACRO) ---
+                # Базовий pitch rate вперед + PID корекція на основі err_y
+                # Ціль нижче центру (err_y>0) → нахилити вперед (+pitch rate)
+                # Ціль вище центру (err_y<0) → нахилити назад (-pitch rate)
+                pitch_pid = pid_pitch.update(err_y)
+
+                if attack_phase == "TERMINAL":
+                    base_pitch = BASE_PITCH_RATE + PHASE_TERMINAL_PITCH_ADD
+                elif attack_phase == "ATTACK":
+                    base_pitch = BASE_PITCH_RATE + PHASE_ATTACK_PITCH_ADD
+                else:  # APPROACH
+                    base_pitch = BASE_PITCH_RATE
+
+                pitch_raw = base_pitch + pitch_pid
+                pitch_raw = max(-PID_PITCH_MAX * 2, min(1.0, pitch_raw))
+
+                # --- EMA-згладжування ---
+                _smooth_yaw = _smooth_yaw * (1 - SMOOTH_ALPHA) + yaw_cmd * SMOOTH_ALPHA
+                _smooth_thr = _smooth_thr * (1 - SMOOTH_ALPHA) + throttle_raw * SMOOTH_ALPHA
+                _smooth_pitch = _smooth_pitch * (1 - SMOOTH_ALPHA) + pitch_raw * SMOOTH_ALPHA
+
+                roll_cmd = 0.0
+
+                # --- Відправка на віртуальний геймпад ---
+                gamepad.left_joystick_float(
+                    x_value_float=max(-1.0, min(1.0, _smooth_yaw)),
+                    y_value_float=max(-1.0, min(1.0, _smooth_thr))
+                )
+                gamepad.right_joystick_float(
+                    x_value_float=roll_cmd,
+                    y_value_float=max(-1.0, min(1.0, _smooth_pitch))
+                )
+            else:
+                if auto_mode:
+                    # ── AUTO без цілі → тримати останній курс + pitch=0 (в acro не докручувати) ──
+                    gamepad.left_joystick_float(
+                        x_value_float=max(-1.0, min(1.0, _smooth_yaw)),
+                        y_value_float=max(-1.0, min(1.0, _smooth_thr))
+                    )
+                    gamepad.right_joystick_float(
+                        x_value_float=0.0,
+                        y_value_float=0.0  # pitch=0 — тримати поточний кут в acro
+                    )
+                else:
+                    # ── MANUAL → passthrough ──
+                    gamepad.right_joystick_float(x_value_float=p_roll, y_value_float=p_pitch)
+                    gamepad.left_joystick_float(x_value_float=p_yaw, y_value_float=p_throttle)
 
             gamepad.update()
             t_logic = time.perf_counter() - t_logic
@@ -669,76 +740,84 @@ def main() -> None:
             t_draw = time.perf_counter()
             overlay = np.zeros((height, width, 3), dtype=np.uint8)
             draw_crosshair(overlay, cx_screen, cy_screen)
-            # Коефіцієнти масштабування bbox (з IMGSZ → overlay)
-            scale_x = width / IMGSZ
-            scale_y = height / IMGSZ
+            scale_x = 1
+            scale_y = 1
 
-            mode_text = "AUTO" if auto_mode else "MANUAL"
-            mode_color = (0, 0, 255) if auto_mode else (0, 255, 0)
+            mode_text = flight_mode
+            mode_colors = {"MANUAL": (0, 255, 0), "LOCK": (0, 255, 255), "AUTO": (0, 0, 255)}
+            mode_color = mode_colors.get(flight_mode, (255, 255, 255))
             cv2.putText(overlay, mode_text, (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, mode_color, 3)
 
-            if not auto_mode:
-                # MANUAL: малюємо ВСІ машини (без ліній і відстаней)
-                for car in all_cars:
-                    cx1, cy1, cx2, cy2, cconf, ctid = car
-                    col = BBOX_COLOR
-                    sx1, sy1, sx2, sy2 = int(cx1 * scale_x), int(cy1 * scale_y), int(cx2 * scale_x), int(cy2 * scale_y)
-                    cv2.rectangle(overlay, (sx1, sy1), (sx2, sy2), col, BBOX_THICKNESS)
-                    cv2.putText(overlay, f"car {cconf:.0%} ID:{ctid}", (sx1, sy1 - 8),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.55, col, 2)
+            # Малюємо ВСІ машини
+            for car in all_cars:
+                cx1, cy1, cx2, cy2, cconf, ctid = car
+                is_locked = (flight_mode in ("LOCK", "AUTO")) and (ctid == locked_track_id)
+                col = BBOX_COLOR_LOCKED if is_locked else BBOX_COLOR
+                sx1, sy1, sx2, sy2 = int(cx1 * scale_x), int(cy1 * scale_y), int(cx2 * scale_x), int(cy2 * scale_y)
+                cv2.rectangle(overlay, (sx1, sy1), (sx2, sy2), col, BBOX_THICKNESS)
+                cv2.putText(overlay, f"car {cconf:.0%} ID:{ctid}", (sx1, sy1 - 8),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, col, 2)
 
-                if target is not None:
-                    x1, y1, x2, y2, conf = target
-                    sx1, sy1, sx2, sy2 = int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y)
-                    cx_target = (sx1 + sx2) // 2
-                    cy_target = (sy1 + sy2) // 2
-                    # cv2.line(overlay, (cx_screen, cy_screen), (cx_target, cy_target),
-                    #          LINE_COLOR, LINE_THICKNESS)
-                    delta_x = cx_target - cx_screen
-                    delta_y = cy_target - cy_screen
-                    fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
-                    print(f"[MANUAL] →ID:{closest_track_id} dx={delta_x:+5d} dy={delta_y:+5d} | "
-                          f"cars:{len(all_cars)} | FPS: {fps:.1f}   ", end="\r")
-                else:
-                    fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
-                    print(f"[MANUAL] NO TARGET | FPS: {fps:.1f}   ", end="\r")
+            if target is not None:
+                x1, y1, x2, y2, conf = target
+                sx1, sy1, sx2, sy2 = int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y)
+                cx_target = (sx1 + sx2) // 2
+                cy_target = (sy1 + sy2) // 2
+                delta_x = cx_target - cx_screen
+                delta_y = cy_target - cy_screen
+                bbox_w_draw = sx2 - sx1
+                bbox_ratio_draw = bbox_w_draw / max(width, 1)
 
-            else:
-                # AUTO: малюємо ВСІ машини, лінію тільки до залоченої
-                for car in all_cars:
-                    cx1, cy1, cx2, cy2, cconf, ctid = car
-                    is_locked = (ctid == locked_track_id)
-                    col = BBOX_COLOR_LOCKED if is_locked else BBOX_COLOR
-                    sx1, sy1, sx2, sy2 = int(cx1 * scale_x), int(cy1 * scale_y), int(cx2 * scale_x), int(cy2 * scale_y)
-                    cv2.rectangle(overlay, (sx1, sy1), (sx2, sy2), col, BBOX_THICKNESS)
-                    cv2.putText(overlay, f"car {cconf:.0%} ID:{ctid}", (sx1, sy1 - 8),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.55, col, 2)
+                if flight_mode == "LOCK":
+                    # LOCK: лінія до цілі + інфо
+                    cv2.line(overlay, (cx_screen, cy_screen), (cx_target, cy_target),
+                             (0, 255, 255), LINE_THICKNESS)
+                    cv2.putText(overlay, f"LOCKED ID:{locked_track_id} [ПРОБІЛ = АТАКА]",
+                                (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                    cv2.circle(overlay, (cx_target, cy_target), 5, (0, 255, 255), -1)
 
-                if target is not None:
-                    x1, y1, x2, y2, conf = target
-                    sx1, sy1, sx2, sy2 = int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y)
-                    cx_target = (sx1 + sx2) // 2
-                    cy_target = (sy1 + sy2) // 2
-                    delta_x = cx_target - cx_screen
-                    delta_y = cy_target - cy_screen
-
+                elif auto_mode:
+                    # AUTO: лінія + фаза + прогрес
                     cv2.line(overlay, (cx_screen, cy_screen), (cx_target, cy_target),
                              LINE_COLOR, LINE_THICKNESS)
 
-                    grace_text = f" grace:{frames_without_target}" if frames_without_target > 0 else ""
-                    cv2.putText(overlay, f"R:{roll:+.2f} P:{pitch:+.2f} Y:{yaw:+.2f} T:{auto_throttle:.0%}{grace_text}",
-                                (10, height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                    # Колір фази
+                    phase_colors = {
+                        "SEARCH": (128, 128, 128),
+                        "APPROACH": (0, 255, 255),   # жовтий
+                        "ATTACK": (0, 165, 255),     # оранжевий
+                        "TERMINAL": (0, 0, 255),     # червоний
+                    }
+                    ph_color = phase_colors.get(attack_phase, (255, 255, 255))
+
                     cv2.putText(overlay, f"LOCKED ID:{locked_track_id}",
                                 (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
+                    cv2.putText(overlay, f"PHASE: {attack_phase}",
+                                (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, ph_color, 2)
+                    cv2.putText(overlay, f"BBOX: {bbox_ratio_draw:.0%}",
+                                (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.55, ph_color, 2)
 
-                    fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
-                    print(f"[AUTO] dx={delta_x:+5d} dy={delta_y:+5d} | "
-                          f"R={roll:+.2f} P={pitch:+.2f} Y={yaw:+.2f} T={auto_throttle:.0%} | "
-                          f"FPS: {fps:.1f}   ", end="\r")
-                else:
-                    fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
-                    print(f"[AUTO] NO TARGET | FPS: {fps:.1f}   ", end="\r")
+                    # Прогрес-бар наближення
+                    bar_y = 140
+                    bar_w = 200
+                    bar_h = 16
+                    fill = min(1.0, bbox_ratio_draw / PHASE_TERMINAL_RATIO)
+                    cv2.rectangle(overlay, (10, bar_y), (10 + bar_w, bar_y + bar_h), (80, 80, 80), -1)
+                    cv2.rectangle(overlay, (10, bar_y), (10 + int(bar_w * fill), bar_y + bar_h), ph_color, -1)
+                    cv2.putText(overlay, "IMPACT", (10 + bar_w + 5, bar_y + 13),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, ph_color, 1)
+
+                    # Маленька точка на цілі
+                    cv2.circle(overlay, (cx_target, cy_target), 5, ph_color, -1)
+
+                fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
+                print(f"[{mode_text}|{attack_phase:8s}] dx={delta_x:+5d} dy={delta_y:+5d} "
+                      f"bbox={bbox_ratio_draw:.0%} | cars:{len(all_cars)} | FPS: {fps:.1f}   ", end="\r")
+            else:
+                fps = 1.0 / (time.perf_counter() - t0 + 1e-9)
+                phase_str = attack_phase if auto_mode else ""
+                print(f"[{mode_text}] NO TARGET {phase_str} | FPS: {fps:.1f}   ", end="\r")
 
             t_draw = time.perf_counter() - t_draw
 
