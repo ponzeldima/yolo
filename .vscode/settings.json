@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git show 6710e86:uncrashed_tracker/drone_visual_aim\\.py \\| Select-Object -Index \\(730\\.\\.740\\)$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

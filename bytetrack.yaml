@@ -3,5 +3,5 @@ track_high_thresh: 0.20
 track_low_thresh: 0.1
 new_track_thresh: 0.60
 track_buffer: 50
-match_thresh: 0.4
+match_thresh: 0.1
 fuse_score: True

@@ -1,0 +1,66 @@
+\begin{thebibliography}{99}
+
+\bibitem{ponzel_zaritskyi_2025} Ponzel D, Zaritskyi O. Modern object detection techniques: an overview of challenges and research perspectives. In: XXV International Scientific and Practical Conference “Information Technologies and Security” (ITS-2025); 2025. pp. 252-255.
+\bibitem{zaritskyi_2026} Zaritskyi O. Object detection models in counter-unmanned aircraft systems based on devices with limited computing capabilities. In: XIII International Scientific and Practical Conference “Information Control Systems & Technologies” (ICST-2025). CEUR Workshop Proceedings; 2026. pp. 317-328.
+\bibitem{wang_2014_an} Wang YQ. An analysis of the Viola-Jones face detection algorithm. Image Processing On Line 2014; 4: 128-148. doi: 10.5201/ipol.2014.104
+\bibitem{dalal_2005_histograms} Dalal N, Triggs B. Histograms of oriented gradients for human detection. In: IEEE Computer Society Conference on Computer Vision and Pattern Recognition (CVPR); 2005.
+\bibitem{ibm_2023_support} IBM. Support vector machine. IBM 2023. https://www.ibm.com/think/topics/support-vector-machine
+\bibitem{ren_2017_faster} Ren S, He K, Girshick R, Sun J. Faster R-CNN: towards real-time object detection with region proposal networks. IEEE Transactions on Pattern Analysis and Machine Intelligence 2017; 39 (6): 1137-1149. doi: 10.1109/tpami.2016.2577031
+\bibitem{redmon_divvala_girshick_farhadi_2016} Redmon J, Divvala S, Girshick R, Farhadi A. You only look once: unified, real-time object detection. arXiv preprint 2016. arXiv:1506.02640.
+\bibitem{jocher_chaurasia_qiu_2023} Jocher G, Chaurasia A, Qiu J. YOLOv8 by Ultralytics. GitHub 2023. https://github.com/ultralytics/ultralytics
+\bibitem{wang_yeh_liao_2024} Wang CY, Yeh IH, Liao HY. YOLOv9: learning what you want to learn using programmable gradient information. arXiv preprint 2024. arXiv:2402.13616.
+
+
+\bibitem{wang_chen_liu_chen_lin_han_ding_2024} Wang A, Chen H, Liu L, Chen K, Lin Z et al. YOLOv10: real-time end-to-end object detection. arXiv preprint 2024. arXiv:2405.14458.
+\bibitem{ultralytics_glenn_2024} Jocher G. YOLO11. Ultralytics 2024. https://docs.ultralytics.com/models/yolo11/
+\bibitem{liu_anguelov_erhan_szegedy_reed_fu_berg_2016} Liu W, Anguelov D, Erhan D, Szegedy C, Reed S et al. SSD: single shot MultiBox detector. arXiv preprint 2016. arXiv:1512.02325.
+\bibitem{lin_goyal_girshick_he_dollar_2018} Lin TY, Goyal P, Girshick R, He K, Dollar P. Focal loss for dense object detection. IEEE Transactions on Pattern Analysis and Machine Intelligence 2018. doi: 10.1109/tpami.2018.2858826
+\bibitem{carion_massa_synnaeve_usunier_kirillov_zagoruyko_2020} Carion N, Massa F, Synnaeve G, Usunier N, Kirillov A et al. End-to-end object detection with transformers. arXiv preprint 2020. arXiv:2005.12872.
+\bibitem{zhu_su_lu_li_wang_dai_research_2021} Zhu X, Su W, Lu L, Li B, Wang X et al. Deformable DETR: deformable transformers for end-to-end object detection. arXiv preprint 2021. arXiv:2010.04159.
+\bibitem{caron_touvron_misra_jegou_mairal_bojanowski_joulin_facebook research_2021} Caron M, Touvron H, Misra I, Jegou H, Mairal J et al. Emerging properties in self-supervised vision transformers. arXiv preprint 2021. arXiv:2104.14294.
+\bibitem{zhao_lv_xu_wei_wang_dang_liu_chen_2024} Zhao Y, Lv W, Xu S, Wei J, Wang G et al. DETRs beat YOLOs on real-time object detection. arXiv preprint 2024. arXiv:2304.08069.
+\bibitem{howard_zhu_chen_kalenichenko_wang_weyand_andreetto_2017} Howard A, Zhu M, Chen B, Kalenichenko D, Wang W et al. MobileNets: efficient convolutional neural networks for mobile vision applications. arXiv preprint 2017. arXiv:1704.04861.
+\bibitem{sandler_howard_zhu_zhmoginov_chen_2019} Sandler M, Howard A, Zhu M, Zhmoginov A, Chen LC. MobileNetV2: inverted residuals and linear bottlenecks. arXiv preprint 2019. arXiv:1801.04381.
+
+
+\bibitem{howard_sandler_chu_chen_chen_tan_wang_zhu_pang_vasudevan_et al._2019} Howard A, Sandler M, Chu G, Chen LC, Chen B et al. Searching for MobileNetV3. arXiv preprint 2019. arXiv:1905.02244.
+\bibitem{li_lv_wang_li_yang_yang_2022} Li X, Lv C, Wang W, Li G, Yang L et al. Generalized focal loss: towards efficient representation learning for dense object detection. IEEE Transactions on Pattern Analysis and Machine Intelligence 2022; 1-14. doi: 10.1109/tpami.2022.3180392
+\bibitem{ulusoy_tuna_2040} Ulusoy T. YOLO-NAS: Deci’s neural architecture search technology. GitHub 2024. https://github.com/TunaUlusoy/YOLO-NAS
+\bibitem{dickson_2022} Dickson B. FOMO is a TinyML neural network for real-time object detection. TNW Deep-Tech 2022. https://thenextweb.com/news/fomo-tinyml-neural-network-object-detection
+\bibitem{zaritskyi_ponzel_2025} Zaritskyi O, Ponzel D. FOMO models in UAV object detection tasks. In: XXV International Scientific and Practical Conference “Information Technologies and Security” (ITS-2025); 2025. pp. 271-275.
+\bibitem{zaritskyi_ponomarenko_2025} Zaritskyi OV, Ponomarenko OV. Intelligent analysis of sound patterns of unmanned aerial vehicle engines in the tasks of C-UAS systems development. International Journal of Computing 2025; 387-396. doi: 10.47839/ijc.24.2.4023
+\bibitem{bewley_ge_ott_ramos_upcroft_2017} Bewley A, Ge Z, Ott L, Ramos F, Upcroft B. Simple online and realtime tracking. arXiv preprint 2017. arXiv:1602.00763.
+\bibitem{wojke_bewley_paulus_2017} Wojke N, Bewley A, Paulus D. Simple online and realtime tracking with a deep association metric. arXiv preprint 2017. arXiv:1703.07402.
+\bibitem{zhang_sun_jiang_yu_weng_yuan_luo_liu_wang_2022} Zhang Y, Sun P, Jiang Y, Yu D, Weng F et al. ByteTrack: multi-object tracking by associating every detection box. arXiv preprint 2022. arXiv:2110.06864.
+
+
+\bibitem{aharon_orfaig_bobrovsky_2022} Aharon N, Orfaig R, Bobrovsky BZ. BoT-SORT: robust associations multi-pedestrian tracking. arXiv preprint 2022. arXiv:2206.14651.
+\bibitem{visdrone_2020} VisDrone. VisDrone-Dataset. GitHub 2020. https://github.com/VisDrone/VisDrone-Dataset
+\bibitem{mahdimoalla_2021} MahdiMoalla. anti_uav_dataset_300. Kaggle 2021. https://www.kaggle.com/datasets/mm1991/anti-uav-dataset-300
+\bibitem{mwaseema_2025} Mwaseema. Drone-Detection. GitHub 2025. https://github.com/mwaseema/Drone-Detection
+\bibitem{zaritskyi_miroshnyk_2024} Zaritskyi O, Miroshnyk A. A combined method for recognizing and intercepting unmanned aerial vehicles using machine learning methods. 2024. pp. 127-131.
+\bibitem{nguyen_nguyen_bui_2025} Nguyen PT, Nguyen GL, Bui DD. LW-UAV-YOLOv10: a lightweight model for small UAV detection on infrared data based on YOLOv10. Geomatica 2025; 77 (1): 100049. doi: 10.1016/j.geomat.2025.100049
+\bibitem{zhang_wang_shi_wang_tian_xu_zhang_jia_2025} Zhang Q, Wang X, Shi H, Wang K, Tian Y et al. BRA-YOLOv10: UAV small target detection based on YOLOv10. Drones 2025; 9 (3): 159. doi: 10.3390/drones9030159
+\bibitem{zhao_chen_2024} Zhao X, Chen Y. YOLO-DroneMS: multi-scale object detection network for unmanned aerial vehicle (UAV) images. Drones 2024; 8 (11): 609. doi: 10.3390/drones8110609
+\bibitem{kaleem_2024} Kaleem Z. Lightweight and computationally efficient YOLO for rogue UAV detection in complex backgrounds. IEEE Transactions on Aerospace and Electronic Systems 2024. doi: 10.1109/TAES.2024.3464579
+
+
+\bibitem{cao_bao_shang_yuan_cheng_2023} Cao J, Bao W, Shang H, Yuan M, Cheng Q. GCL-YOLO: a GhostConv-based lightweight YOLO network for UAV small object detection. Remote Sensing 2023; 15 (20): 4932. doi: 10.3390/rs15204932
+\bibitem{zhang_zhang_liu_gan_zhu_2025} Zhang H, Zhang H, Liu K, Gan Z, Zhu GN. UAV-DETR: efficient end-to-end object detection for unmanned aerial vehicle imagery. In: 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS); 2025. pp. 15143-15149. doi: 10.1109/iros60139.2025.11246176
+\bibitem{zhou_wei_2025} Zhou Y, Wei Y. UAV-DETR: an enhanced RT-DETR architecture for efficient small object detection in UAV imagery. Sensors 2025; 25 (15): 4582. doi: 10.3390/s25154582
+\bibitem{liao_zhang_yu_huang_zhu_peng_2026} Liao N, Zhang Y, Yu Z, Huang J, Zhu M et al. UAV-DETR: few-parameter DETR for small object detection in high-altitude UAV images. IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing 2026; 19: 2575-2587. doi: 10.1109/jstars.2025.3645731
+\bibitem{cui_sun_li_li_su_2025} Cui C, Sun Y, Li L, Li X, Su J. Small object detection for UAV scenarios: a multi-module collaborative strategy based on improved RT-DETR. In: 2025 International Conference on Virtual Reality and Visualization (ICVRV); 2025. pp. 836-841. doi: 10.1109/icvrv67992.2025.00147
+\bibitem{wei_xun_lim_srigrarom_2021} Wei Xun DT, Lim YL, Srigrarom S. Drone detection using YOLOv3 with transfer learning on NVIDIA Jetson TX2. In: 2021 Second International Symposium on Instrumentation, Control, Artificial Intelligence, and Robotics (ICA-SYMP); 2021. doi: 10.1109/ica-symp50206.2021.9358449
+\bibitem{raj_hakani_rawat_2024} Raj Hakani, Rawat A. Edge computing-driven real-time drone detection using YOLOv9 and NVIDIA Jetson Nano. Drones 2024; 8 (11): 680. doi: 10.3390/drones8110680
+
+
+\bibitem{swinney_woods_2022} Swinney C, Woods J. Low-cost Raspberry-Pi-based UAS detection and classification system using machine learning. Aerospace 2022; 9 (12): 738. doi: 10.3390/aerospace9120738
+\bibitem{kryvenchuk_stupnytskyi_shevchuk_kushka_shevchuk_2025} Kryvenchuk Y, Stupnytskyi R, Shevchuk A, Kushka B, Shevchuk I. UAV detection with YOLO on a standalone Raspberry Pi 5 system. CEUR Workshop Proceedings 2025. https://ceur-ws.org/Vol-3970/PAPER1.pdf
+\bibitem{garcía-gonzález_gómez muñoz_gachet páez_sánchez-soriano_2025} García-González J, Gómez Muñoz CQ, Gachet Páez D, Sánchez-Soriano J. Automated road data collection systems using UAVs: comparative evaluation of architectures based on Arduino Portenta H7 and ESP32-CAM. Electronics 2025; 14 (21): 4165. doi: 10.3390/electronics14214165
+\bibitem{aniobi_2024} Aniobi A. Sensor fusion for real-time object detection and spatial positioning in unmanned vehicles using YOLOv8 and ESP32-Cam. Preprints 2024. doi: 10.20944/preprints202411.0611.v1
+\bibitem{zhang_lu_yang_xie_fan_tang_2024} Zhang T, Lu R, Yang X, Xie X, Fan J et al. UAV Hunter: a net-capturing UAV system with improved detection and tracking methods for anti-UAV defense. Drones 2024; 8 (10): 573. doi: 10.3390/drones8100573
+\bibitem{zhang_su_lu_zang_li_2024} Zhang B, Su W, Lu G, Zang D, Li X. Research on drone multi-target tracking algorithm based on pseudo depth. In: 2024 3rd International Conference on Robotics, Artificial Intelligence and Intelligent Control (RAIIC); 2024. pp. 485-489. doi: 10.1109/raiic61787.2024.10670912
+\bibitem{liu_plotegher_roura_junior_he_2025} Liu J, Plotegher L, Roura E, Junior CS, He S. Real-time detection for small UAVs: combining YOLO and multiframe motion analysis. IEEE Transactions on Aerospace and Electronic Systems 2025; 61 (5): 13419-13433. doi: 10.1109/taes.2025.3577592
+\bibitem{zhou_yang_liu_zhou_liu_zhao_wang_2025} Zhou S, Yang L, Liu H, Zhou C, Liu J et al. A lightweight drone detection method integrated into a linear attention mechanism based on improved YOLOv11. Remote Sensing 2025; 17 (4): 705. doi: 10.3390/rs17040705
+
+\end{thebibliography}
