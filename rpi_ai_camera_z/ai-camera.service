@@ -1,0 +1,20 @@
+[Unit]
+Description=AI Camera Stream with YOLOv8 Detection
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ai_camera_stream
+ExecStart=/home/pi/ai_camera_stream/.venv/bin/python3 /home/pi/ai_camera_stream/ai_camera_stream.py
+Restart=always
+RestartSec=10
+
+# Логування
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-camera
+
+[Install]
+WantedBy=multi-user.target

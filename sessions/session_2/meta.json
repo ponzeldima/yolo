@@ -1,0 +1,20 @@
+{
+  "shape": [
+    24,
+    32
+  ],
+  "dtype": "float32",
+  "endian": "little",
+  "n_frames": 397,
+  "duration_s": 67.827,
+  "fps_avg": 5.853,
+  "video_fps_used": 10.0,
+  "t_min_global_c": 23.12,
+  "t_max_global_c": 64.86,
+  "files": {
+    "frames": "frames.f32",
+    "timestamps": "timestamps.f64",
+    "csv": null,
+    "video": "video.mp4"
+  }
+}

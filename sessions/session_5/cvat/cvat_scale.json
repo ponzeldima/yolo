@@ -1,0 +1,19 @@
+{
+  "session_dir": "/Users/dmytroponzel/Desktop/yolo/sessions/session_5",
+  "video": "labeling.mp4",
+  "n_frames": 130,
+  "fps": 5.916,
+  "orig_w": 32,
+  "orig_h": 24,
+  "label_w": 320,
+  "label_h": 240,
+  "scale_x": 10.0,
+  "scale_y": 10.0,
+  "palette": "inferno",
+  "scale_mode": "robust",
+  "t_range_used": [
+    23.6200008392334,
+    57.004398345947266
+  ],
+  "frame_index_base": 1
+}
