@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['drone']
+
+roboflow:
+  workspace: dmytros-workspace-nklhh
+  project: fpv-azzbv-ojhqy
+  version: 4
+  license: CC BY 4.0
+  url: https://app.roboflow.com/dmytros-workspace-nklhh/fpv-azzbv-ojhqy/4

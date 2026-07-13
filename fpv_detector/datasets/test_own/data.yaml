@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['drone']
+
+roboflow:
+  workspace: dmytros-workspace-nklhh
+  project: test-fpv-dataset
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/dmytros-workspace-nklhh/test-fpv-dataset/dataset/2
