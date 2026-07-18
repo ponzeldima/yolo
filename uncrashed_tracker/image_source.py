@@ -139,20 +139,25 @@ class CameraSource(BaseImageSource):
         self._height = 0
 
     def start(self) -> None:
-        self._cap = cv2.VideoCapture(self._camera_index)
+        # DirectShow бекенд — стабільніший для аналогових capture-карт на Windows
+        self._cap = cv2.VideoCapture(self._camera_index, cv2.CAP_DSHOW)
         if not self._cap.isOpened():
             raise RuntimeError(f"Камера {self._camera_index} не доступна.")
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._req_width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._req_height)
+        self._cap.set(cv2.CAP_PROP_FPS, config.CAMERA_FPS)
         self._width = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self._height = int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        print(f"[CAMERA] Відкрито камеру {self._camera_index}: {self._width}x{self._height}")
+        actual_fps = self._cap.get(cv2.CAP_PROP_FPS)
+        print(f"[CAMERA] Відкрито камеру {self._camera_index}: {self._width}x{self._height} @ {actual_fps:.0f} FPS")
 
     def get_frame(self) -> np.ndarray | None:
         if self._cap is None:
             return None
         ret, frame = self._cap.read()
-        return frame if ret else None
+        if not ret or frame is None:
+            return None
+        return frame
 
     def stop(self) -> None:
         if self._cap is not None:

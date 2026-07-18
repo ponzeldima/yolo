@@ -24,6 +24,15 @@ local FRAME_SIZE = 11
 local WIRE_OFFSET = 1024
 local FAILSAFE_MS = 200
 
+-- Телеметрія → Python
+local TELEM_H1 = 0xAA
+local TELEM_H2 = 0x55
+local TELEM_OFFSET = 1800   -- зсув: градуси*10 + 1800 → uint16
+local telemCounter = 0
+local TELEM_EVERY = 1       -- відправка кожен цикл (мінімальна затримка)
+local telemPitch = 0
+local telemRoll = 0
+
 -- Буфер
 local buf = {}
 local bufLen = 0
@@ -73,6 +82,31 @@ local function setChannels(thr, rol, pit, yaw)
   model.setGlobalVariable(1, 0, pit)  -- GV2 = Pitch
   model.setGlobalVariable(2, 0, thr)  -- GV3 = Throttle
   model.setGlobalVariable(3, 0, yaw)  -- GV4 = Yaw
+end
+
+local function sendTelemetry()
+  -- Читаємо телеметрію від дрона (CRSF/ELRS)
+  -- Назви сенсорів: "Ptch" і "Roll" (EdgeTX стандарт для CRSF Attitude)
+  -- Якщо у вас інші назви — перевірте MODEL → Telemetry → Sensors
+  local pitchDeg = getValue("Ptch") or 0
+  local rollDeg = getValue("Roll") or 0
+
+  telemPitch = pitchDeg
+  telemRoll = rollDeg
+
+  -- Кодуємо: градуси * 10 + offset → uint16 (0..3600)
+  local pv = math.floor(pitchDeg * 10 + 0.5) + TELEM_OFFSET
+  local rv = math.floor(rollDeg * 10 + 0.5) + TELEM_OFFSET
+  if pv < 0 then pv = 0 elseif pv > 3600 then pv = 3600 end
+  if rv < 0 then rv = 0 elseif rv > 3600 then rv = 3600 end
+
+  local ph = math.floor(pv / 256)
+  local pl = pv % 256
+  local rh = math.floor(rv / 256)
+  local rl = rv % 256
+
+  local xor = bit32.bxor(ph, pl, rh, rl)
+  serialWrite(string.char(TELEM_H1, TELEM_H2, ph, pl, rh, rl, xor))
 end
 
 local function run(event)
@@ -144,6 +178,13 @@ local function run(event)
     setChannels(-1024, 0, 0, 0)
   end
 
+  -- Телеметрія → Python (кожні TELEM_EVERY циклів)
+  telemCounter = telemCounter + 1
+  if telemCounter >= TELEM_EVERY then
+    telemCounter = 0
+    sendTelemetry()
+  end
+
   -- Екран 128x64
   lcd.clear()
 
@@ -159,14 +200,16 @@ local function run(event)
   lcd.drawText(65, 21, "Y:" .. tostring(vYaw), 0)
 
   lcd.drawText(1, 33, "Frames:" .. tostring(framesOK), SMLSIZE)
+  lcd.drawText(1, 42, "P:" .. string.format("%.1f", telemPitch)
+                    .. " R:" .. string.format("%.1f", telemRoll), SMLSIZE)
 
   if armed then
-    lcd.drawText(1, 44, "ENTER=disarm  EXIT=quit", SMLSIZE)
+    lcd.drawText(1, 51, "ENTER=disarm  EXIT=quit", SMLSIZE)
   else
-    lcd.drawText(1, 44, "ENTER=ARM     EXIT=quit", SMLSIZE)
+    lcd.drawText(1, 51, "ENTER=ARM     EXIT=quit", SMLSIZE)
   end
 
-  lcd.drawText(1, 55, "GV1-4 -> CH1-4 in Mixes", SMLSIZE + INVERS)
+  lcd.drawText(1, 59, "GV1-4 -> CH1-4 in Mixes", SMLSIZE + INVERS)
 
   return 0
 end

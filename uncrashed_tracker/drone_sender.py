@@ -23,6 +23,11 @@ MIXER_MIN = -1024
 MIXER_MAX = 1024
 WIRE_OFFSET = 1024
 
+# Телеметрія (Lua → Python)
+TELEM_HEADER = bytes([0xAA, 0x55])
+TELEM_FRAME_SIZE = 7
+TELEM_OFFSET = 1800
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,6 +72,9 @@ class DroneSender:
         self._port = port
         self._baudrate = baudrate
         self._serial: serial.Serial | None = None
+        self._telem_buf = bytearray()
+        self._telem_pitch: float | None = None
+        self._telem_roll: float | None = None
 
     def init(self):
         """Відкрити serial-порт і вивести в нейтраль."""
@@ -102,6 +110,54 @@ class DroneSender:
     def reset(self):
         """Скинути в безпечну нейтраль (throttle = мінімум)."""
         self._send_mixer(throttle=MIXER_MIN, roll=0, pitch=0, yaw=0)
+
+    def read_telemetry(self) -> tuple[float | None, float | None]:
+        """Non-blocking: читає телеметрію (pitch, roll) від Lua bridge.
+
+        Returns:
+            (pitch_deg, roll_deg) — градуси, або None якщо ще немає даних.
+        """
+        if self._serial is None or not self._serial.is_open:
+            return self._telem_pitch, self._telem_roll
+
+        avail = self._serial.in_waiting
+        if avail > 0:
+            self._telem_buf.extend(self._serial.read(avail))
+
+        # Парсимо всі повні фрейми в буфері
+        while len(self._telem_buf) >= TELEM_FRAME_SIZE:
+            idx = self._telem_buf.find(TELEM_HEADER)
+            if idx < 0:
+                self._telem_buf.clear()
+                break
+            if idx > 0:
+                del self._telem_buf[:idx]
+            if len(self._telem_buf) < TELEM_FRAME_SIZE:
+                break
+
+            frame = self._telem_buf[:TELEM_FRAME_SIZE]
+            xor = 0
+            for b in frame[2:6]:
+                xor ^= b
+            if xor != frame[6]:
+                del self._telem_buf[:1]
+                continue
+
+            pitch_raw = frame[2] * 256 + frame[3]
+            roll_raw = frame[4] * 256 + frame[5]
+            self._telem_pitch = (pitch_raw - TELEM_OFFSET) / 10.0
+            self._telem_roll = (roll_raw - TELEM_OFFSET) / 10.0
+            del self._telem_buf[:TELEM_FRAME_SIZE]
+
+        return self._telem_pitch, self._telem_roll
+
+    @property
+    def telemetry_pitch(self) -> float | None:
+        return self._telem_pitch
+
+    @property
+    def telemetry_roll(self) -> float | None:
+        return self._telem_roll
 
     def close(self):
         """Безпечно закрити: скинути газ і закрити порт."""

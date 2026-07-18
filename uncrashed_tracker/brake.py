@@ -12,6 +12,7 @@
 import cv2
 import numpy as np
 import time
+from collections import deque
 
 from . import config
 from .pid import PIDController
@@ -44,6 +45,25 @@ class OpticalFlowBrake:
         self.flow_y = 0.0   # vertical (Throttle)
         self.flow_div = 0.0  # divergence (Pitch / forward-back)
 
+        # Temporal median буфери
+        n = config.BRAKE_MEDIAN_SIZE
+        self._hist_fx: deque[float] = deque(maxlen=n)
+        self._hist_fy: deque[float] = deque(maxlen=n)
+        self._hist_div: deque[float] = deque(maxlen=n)
+
+        # Auto-tune base throttle
+        self._base_throttle = config.BRAKE_BASE_THROTTLE
+        self._autotune_log: list[tuple[float, float, float]] = []  # (timestamp, throttle, flow_y)
+        self._autotune_last_check: float | None = None
+        self._gyro_missing_since: float | None = None
+        self._gyro_last_warn: float | None = None
+
+        # Цільова дивергенція (forward speed setpoint).
+        # > 0 — політ вперед (пікселі мають розходитись із центру зі сталим темпом)
+        # < 0 — політ назад
+        # = 0 — зависання на місці
+        self.forward_setpoint: float = 0.0
+
     def reset(self):
         self.pid_roll.reset()
         self.pid_thr.reset()
@@ -58,6 +78,14 @@ class OpticalFlowBrake:
         self.flow_x = 0.0
         self.flow_y = 0.0
         self.flow_div = 0.0
+        self._hist_fx.clear()
+        self._hist_fy.clear()
+        self._hist_div.clear()
+        self._base_throttle = config.BRAKE_BASE_THROTTLE
+        self._autotune_log = []
+        self._autotune_last_check = None
+        self._gyro_missing_since = None
+        self._gyro_last_warn = None
 
     def _build_radial_map(self, h: int, w: int) -> np.ndarray:
         """Будує карту unit-векторів від центру зображення.
@@ -90,8 +118,12 @@ class OpticalFlowBrake:
             return 1.0
         return 1.0 - (1.0 - alpha_per_sec) ** dt
 
-    def compute(self, frame: np.ndarray) -> tuple[float, float, float, float]:
+    def compute(self, frame: np.ndarray, gyro_pitch: float | None = None) -> tuple[float, float, float, float]:
         """Обчислює команди гальмування на основі optical flow.
+
+        Args:
+            frame: поточний кадр камери
+            gyro_pitch: реальний pitch від гіроскопа дрона (градуси), або None
 
         Returns:
             (left_x, left_y, right_x, right_y) — значення стіків.
@@ -102,12 +134,14 @@ class OpticalFlowBrake:
         scale = config.BRAKE_FLOW_SCALE
         small = cv2.resize(frame, (int(w * scale), int(h * scale)))
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        # Gaussian blur — прибирає шум аналогової камери та jitter
+        gray = cv2.GaussianBlur(gray, (7, 7), 0)
 
         if self._prev_gray is None:
             self._prev_gray = gray
             self._prev_time = time.perf_counter()
             self._frame_time = self._prev_time
-            base_thr = -1.0 + config.BRAKE_BASE_THROTTLE * 2.0
+            base_thr = -1.0 + self._base_throttle * 2.0
             return (0.0, base_thr, 0.0, 0.0)
 
         now = time.perf_counter()
@@ -123,7 +157,7 @@ class OpticalFlowBrake:
         a_pitch = self._time_alpha(config.BRAKE_PITCH_SMOOTH_ALPHA, frame_dt)
         # Між обрахунками flow — затухання: roll/pitch до 0, thr до base
         self._smooth_roll = self._smooth_roll * (1 - a_roll)
-        base_thr = -1.0 + config.BRAKE_BASE_THROTTLE * 2.0
+        base_thr = -1.0 + self._base_throttle * 2.0
         self._smooth_thr = base_thr + (self._smooth_thr - base_thr) * (1 - a_thr)
         self._smooth_pitch = self._smooth_pitch * (1 - a_pitch)
 
@@ -181,6 +215,43 @@ class OpticalFlowBrake:
         norm_fy = (mean_fy / flow_dt) / (sh * config.BRAKE_FLOW_NORM)
         norm_div = (divergence / flow_dt) / (diag * config.BRAKE_FLOW_NORM)
 
+        # Компенсація нахилу камери з урахуванням поточного pitch
+        if gyro_pitch is not None:
+            if self._gyro_missing_since is not None:
+                gap = now - self._gyro_missing_since
+                print(f"\n[BRAKE][GYRO] Telemetry restored after {gap:.2f}s (pitch={gyro_pitch:+.1f})")
+                self._gyro_missing_since = None
+                self._gyro_last_warn = None
+            effective_comp = config.BRAKE_CAM_TILT_COMP - gyro_pitch * config.BRAKE_CAM_TILT_GYRO_FACTOR
+        else:
+            if self._gyro_missing_since is None:
+                self._gyro_missing_since = now
+                self._gyro_last_warn = now
+                print("\n[BRAKE][GYRO] Telemetry missing -> fallback to smooth_pitch compensation")
+            elif self._gyro_last_warn is None or (now - self._gyro_last_warn) >= 1.0:
+                age = now - self._gyro_missing_since
+                print(f"\n[BRAKE][GYRO] Telemetry still missing ({age:.1f}s), fallback active")
+                self._gyro_last_warn = now
+            effective_comp = config.BRAKE_CAM_TILT_COMP - self._smooth_pitch * config.BRAKE_CAM_TILT_PITCH_FACTOR
+        norm_fy -= norm_div * effective_comp
+
+        # Dead zone: шум аналогової камери нижче порогу → 0
+        dz = config.BRAKE_DEAD_ZONE
+        if abs(norm_fx) < (dz/10):
+            norm_fx = 0.0
+        if abs(norm_fy) < dz:
+            norm_fy = 0.0
+        if abs(norm_div) < (dz/10):
+            norm_div = 0.0
+
+        # Temporal median: робастний до викидів
+        self._hist_fx.append(norm_fx)
+        self._hist_fy.append(norm_fy)
+        self._hist_div.append(norm_div)
+        norm_fx = float(np.median(self._hist_fx))
+        norm_fy = float(np.median(self._hist_fy))
+        norm_div = float(np.median(self._hist_div))
+
         self.flow_x = norm_fx
         self.flow_y = norm_fy
         self.flow_div = norm_div
@@ -193,17 +264,58 @@ class OpticalFlowBrake:
         # Throttle: пікселі йдуть вниз (flow_y > 0) → дрон летить вверх → менше газу
         thr_correction = self.pid_thr.update(norm_fy)
 
-        # Pitch: дивергенція > 0 → дрон летить вперед → pitch назад (інвертуємо)
-        pitch_cmd = -self.pid_pitch.update(norm_div)
+        # Pitch: дивергенція > 0 → дрон летить вперед → pitch назад (інвертуємо).
+        # Віднімаємо setpoint: при forward_setpoint>0 PID буде підтримувати
+        # стабільний forward-рух (дивергенція = setpoint вважається "нормою").
+        pitch_cmd = -self.pid_pitch.update(norm_div - self.forward_setpoint)
 
-        base_thr = -1.0 + config.BRAKE_BASE_THROTTLE * 2.0
+        base_thr = -1.0 + self._base_throttle * 2.0
         throttle = base_thr - thr_correction
 
-        # Roll і Throttle оновлюються вільно, Pitch — лише коли затух до ~0
+        # ── Auto-tune base throttle ──
+        # Записуємо кожен вимір (timestamp, throttle_stick, flow_y)
+        self._autotune_log.append((now, max(-1.0, min(1.0, throttle)), norm_fy))
+
+        # Чистимо старші за вікно записи
+        window = config.BRAKE_AUTOTUNE_WINDOW
+        cutoff = now - window
+        while self._autotune_log and self._autotune_log[0][0] < cutoff:
+            self._autotune_log.pop(0)
+
+        # Перевірка кожні AUTOTUNE_PERIOD секунд
+        if self._autotune_last_check is None:
+            self._autotune_last_check = now
+        elif now - self._autotune_last_check >= config.BRAKE_AUTOTUNE_PERIOD:
+            self._autotune_last_check = now
+            # Потрібно мінімум window секунд даних
+            if self._autotune_log and (now - self._autotune_log[0][0]) >= window * 0.9:
+                thr_vals = [v[1] for v in self._autotune_log]
+                fy_vals = [v[2] for v in self._autotune_log]
+                thr_std = float(np.std(thr_vals))
+                fy_std = float(np.std(fy_vals))
+
+                # Відхиляємо якщо сильні скачки
+                if thr_std < config.BRAKE_AUTOTUNE_MAX_THR_STD and \
+                   fy_std < config.BRAKE_AUTOTUNE_MAX_FY_STD:
+                    avg_thr = float(np.mean(thr_vals))
+                    avg_fy = float(np.mean(fy_vals))
+                    # Корекція: flow_y > 0 = дрон піднімається → менше газу
+                    correction = avg_fy * config.BRAKE_AUTOTUNE_COEFF
+                    new_thr_stick = avg_thr - correction
+                    new_base = (max(-1.0, min(1.0, new_thr_stick)) + 1.0) / 2.0
+                    if abs(new_base - self._base_throttle) > 0.002:
+                        print(f"\n[BRAKE] Auto-tune: {self._base_throttle:.3f} → {new_base:.3f}"
+                              f"  (avg_fy={avg_fy:+.3f}, fy_std={fy_std:.3f}, thr_std={thr_std:.3f})")
+                        self._base_throttle = new_base
+                else:
+                    print(f"\n[BRAKE] Auto-tune skip: thr_std={thr_std:.3f}, fy_std={fy_std:.3f} (turbulence)")
+
+        # Roll і Throttle оновлюються вільно, Pitch — hold: тримає значення коли div=0
+        # if norm_fx != 0.0:
         self._smooth_roll = roll_cmd
         self._smooth_thr = throttle
-        if abs(self._smooth_pitch) < 0.01:
-            self._smooth_pitch = pitch_cmd
+        # if norm_div != 0.0:
+        self._smooth_pitch = pitch_cmd
 
         return (
             0.0,  # left_x (yaw) — не коригуємо

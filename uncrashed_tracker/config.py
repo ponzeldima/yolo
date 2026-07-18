@@ -8,8 +8,9 @@ INPUT_MODE = "drone"  # "simulator" | "camera" | "drone"
 
 # ── Камера (для INPUT_MODE = "camera" / "drone") ────────────────────────────
 CAMERA_INDEX = 0         # індекс камери (0 = перша камера)
-CAMERA_WIDTH = 1280
-CAMERA_HEIGHT = 720
+CAMERA_WIDTH = 720
+CAMERA_HEIGHT = 480
+CAMERA_FPS = 30
 
 # ── Дрон (для INPUT_MODE = "drone") ─────────────────────────────────────────
 # COM-порт USB-VCP пульта (Windows: COM5, macOS: /dev/cu.usbmodemXXXX)
@@ -23,6 +24,7 @@ MODEL_PATH = "yolo11n.pt"
 
 CAR_CLASS_ID = 2
 CONFIDENCE_THRESHOLD = 0.20
+HUNT_CONFIDENCE_THRESHOLD = 0.15
 IMGSZ = 960
 
 SCREEN_W, SCREEN_H = 2560, 1440
@@ -89,23 +91,33 @@ LOST_TIMEOUT = 1.0
 
 # ── Brake (optical flow гальмування, клавіша B) ────────────────────────────
 
-BRAKE_ROLL_KP = 0.0          # X-axis: вліво/вправо → Roll
-BRAKE_ROLL_KI = 0.01
-BRAKE_ROLL_KD = 0.08
+BRAKE_ROLL_KP = 0.1          # X-axis: вліво/вправо → Roll
+BRAKE_ROLL_KI = 0.5
+BRAKE_ROLL_KD = 0.01
 
-BRAKE_THR_KP = 0.05           # Y-axis: вверх/вниз → Throttle
+BRAKE_THR_KP = 0.05         # Y-axis: вверх/вниз → Throttle
 BRAKE_THR_KI = 0.03
 BRAKE_THR_KD = 0.000
 
-BRAKE_PITCH_KP = 0.0         # Z-axis: вперед/назад (дивергенція) → Pitch
-BRAKE_PITCH_KI = 0.0
-BRAKE_PITCH_KD = 0.20
+BRAKE_PITCH_KP = 0.1        # Z-axis: вперед/назад (дивергенція) → Pitch
+BRAKE_PITCH_KI = 1.2
+BRAKE_PITCH_KD = 0.01
 
 BRAKE_OUTPUT_MAX = 0.5
-BRAKE_ROLL_SMOOTH_ALPHA = 0.9  # EMA/сек для roll (0.9 = ~90% затухає за 1с, імпульсний)
+BRAKE_ROLL_SMOOTH_ALPHA = 0.0  # EMA/сек для roll (0.9 = ~90% затухає за 1с, імпульсний)
 BRAKE_THR_SMOOTH_ALPHA = 0.0   # EMA/сек для throttle (0.9 = ~90% затухає до base за 1с, імпульсний)
-BRAKE_PITCH_SMOOTH_ALPHA = 0.9 # EMA/сек для pitch (0.9 = ~90% затухає за 1с, швидкий імпульс)
-BRAKE_FLOW_SCALE = 0.25     # масштаб кадру для optical flow (0.25 = 25%)
+BRAKE_PITCH_SMOOTH_ALPHA = 0.0 # EMA/сек для pitch (0.9 = ~90% затухає за 1с, швидкий імпульс)
+BRAKE_FLOW_SCALE = 1.0     # масштаб кадру для optical flow (0.25 = 25%)
 BRAKE_FLOW_NORM = 0.08      # нормалізація flow → ~[-1,+1]
+BRAKE_CAM_TILT_COMP = -1.3    # компенсація нахилу камери: flow_y -= divergence * coeff
+BRAKE_CAM_TILT_PITCH_FACTOR = 50.0  # вплив pitch на компенсацію: comp -= pitch * factor (для _smooth_pitch)
+BRAKE_CAM_TILT_GYRO_FACTOR = -2.9    # те саме, але для реального гіро pitch (градуси)
 BRAKE_BASE_THROTTLE = 0.44  # базовий газ для зависання (0.0=мін, 1.0=макс). Менше = нижче hover
-BRAKE_INTERVAL = 0.01         # інтервал обрахунку optical flow (секунди)
+BRAKE_AUTOTUNE_WINDOW = 3.0   # вікно аналізу для autotune (сек)
+BRAKE_AUTOTUNE_PERIOD = 300.0   # як часто запускати autotune (сек)
+BRAKE_AUTOTUNE_COEFF = 0.001    # коефіцієнт корекції: base += flow_y_avg * coeff
+BRAKE_AUTOTUNE_MAX_THR_STD = 0.15  # макс. std throttle за вікно (інакше — скачки, пропускаємо)
+BRAKE_AUTOTUNE_MAX_FY_STD = 0.5   # макс. std flow_y за вікно (інакше — скачки, пропускаємо)
+BRAKE_INTERVAL = 0.04         # інтервал обрахунку optical flow (секунди, 0.04 = 25 FPS)
+BRAKE_DEAD_ZONE = 0.14       # мертва зона: |flow| < поріг → вважати 0 (фільтр шуму)
+BRAKE_MEDIAN_SIZE = 2          # temporal median: кількість останніх вимірів для медіани
