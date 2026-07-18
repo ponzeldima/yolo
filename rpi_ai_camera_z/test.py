@@ -22,7 +22,7 @@ picam.configure(video_config)
 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Вказуємо точний абсолютний шлях до вашої робочої папки
-save_dir = "/home/ponzel/Documents/pi/rpi_ai_camera_z"
+save_dir = "/mnt/usb_video"
 output_filename = os.path.join(save_dir, f"{current_time}_video.h264")
 
 print("Запуск прев'ю камери...")
@@ -38,7 +38,7 @@ picam.start_recording(encoder, output_filename)
 
 try:
     # Записуємо відео протягом 10 секунд (змініть це число, якщо треба довше)
-    time.sleep(10)
+    time.sleep(60)
 finally:
     print("Зупинка запису...")
     picam.stop_recording()

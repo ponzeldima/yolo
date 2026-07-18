@@ -3,7 +3,7 @@ from ultralytics import YOLO
 
 def main():
     # Шлях до конфігурації вашого датасету (перевірте, щоб він був правильним)
-    dataset_yaml = "/Users/dmytroponzel/Desktop/yolo/fpv_detector/datasets/fpv1/data.yaml"
+    dataset_yaml = "/Users/dmytroponzel/Desktop/yolo/fpv_detector/datasets/own/data.yaml"
     
     # Шлях до останніх збережених ваг (назва папки має збігатися з параметром name у train)
     last_weights_path = "runs/detect/drone_model/weights/last.pt"
