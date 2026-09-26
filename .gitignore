@@ -6,11 +6,22 @@ datasets/uncrashed_cars.v2i.yolov8
 fpv_detector/test_models/videos/
 fpv_detector/test_models/weights/best2.pt
 fpv_detector/test_models/weights/best3.pt
-fpv_detector/datasets/own
+fpv_detector/datasets/own*
+fpv_detector/datasets/own_1280
+fpv_detector/datasets/own_1080
+fpv_detector/datasets/own_1080_IMG_3157*
 fpv_detector/datasets/test_own
-fpv_detector/datasets/fpv1
-# Byte-compiled / optimized / DLL files
+fpv_detector/datasets/fpv*
+fpv_detector/datasets/drones*
+fpv_detector/datasets/all*
+fpv_detector/datasets/fine_tune_mix
+fpv_detector/datasets/test_*
+fpv_detector/datasets/dataset_*
 
+fpv_detector/*.pt
+fpv_detector/train_models/*.pt
+# Byte-compiled / optimized / DLL files
+datasets/coco8
 runs/
 
 cars.mp4

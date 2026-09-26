@@ -1,0 +1,59 @@
+# Ultralytics — Dataset Readiness Checklist
+
+Project: ____________________________________________________
+Owner:   ____________________________________________________
+Date:    ____________________________________________________
+
+## 1. What are we detecting?
+   Vision task: [ ] detect  [ ] segment  [ ] semantic  [ ] classify  [ ] pose  [ ] OBB
+   Class list:  ___________________________________________
+   Class definitions written? [ ] yes  [ ] no
+
+## 2. Where will the model run?
+   [ ] Cloud GPU   [ ] Cloud CPU   [ ] Edge (Jetson/Pi)   [ ] Mobile   [ ] Browser
+   Latency target: ____ ms   Min hardware: __________________
+
+## 3. What visual variation exists?
+   Times of day:    _______________________________________
+   Weather:         _______________________________________
+   Cameras / sites: _______________________________________
+   Operators:       _______________________________________
+   Product variants:_______________________________________
+
+## 4. What edge cases matter?
+   _______________________________________________________
+   _______________________________________________________
+
+## 5. Do we have negative examples?
+   [ ] Yes — ___% of dataset is background images (target 0–10%)
+   [ ] No  — collect before training
+
+## 6. Are labels consistent?
+   [ ] Labeling guide written
+   [ ] Calibration round done; inter-rater agreement ___%
+   [ ] QC notes attached
+
+## 7. Did we check for leakage?
+   Split unit: [ ] image  [ ] scene  [ ] camera  [ ] day  [ ] location
+   No scene / camera / day appears in more than one split? [ ] yes  [ ] no
+
+## 8. Is the test set truly unseen?
+   [ ] Locked. Touched only once for go/no-go.
+   [ ] Still being tuned against — STOP, re-split.
+
+## 9. What performance metric defines success?
+   Metric: ______________________ Target: ____________
+   Acceptance test: _____________________________________
+
+---
+
+Volume targets met?
+   [ ] ≥ 1500 images / class
+   [ ] ≥ 10,000 labeled instances / class
+   [ ] OR documented exception: ________________________
+
+Ready to fine-tune Ultralytics YOLO26?
+   [ ] Yes — start with the nano checkpoint matching the task selected in #1
+       (detect: `yolo26n.pt`  /  segment: `yolo26n-seg.pt`  /  semantic: `yolo26n-sem.pt`
+        /  pose: `yolo26n-pose.pt`  /  OBB: `yolo26n-obb.pt`  /  classify: `yolo26n-cls.pt`)
+   [ ] No  — fix item ___ first

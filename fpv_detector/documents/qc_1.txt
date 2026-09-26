@@ -1,0 +1,41 @@
+Dataset: dataset_1
+Audit date: 2026-09-19
+Total images: 3872   |   Total labels: 3509
+Background images: 451 (~11,5%)
+Per-class instances:
+  fpv  3459
+  bird    50
+
+#	Check	What you're looking for	Tools
+1	Missing labels	Images where annotators forgot some objects
+	Visual review, low-detection-count outliers
+    не перевірялося на цей раз
+
+2	Wrong classes	Class indices swapped, mislabeled instances	
+    Confusion in val confusion matrix; random sample audits
+
+3	Loose / tight boxes	Boxes that don't closely enclose objects	
+    Visual review; small box-to-object ratio anomalies
+
+4	Duplicate images	Near-identical frames split across train/val	
+    Perceptual hash + content hash (Platform does this automatically)
+
+5	Class imbalance	One class dominates, another has < 100 instances	
+    Charts tab class histogram
+    Дуже сильний імбаланс ФПВ більше в 70 разів.
+    Треба виправити в майбтньому
+
+6	Split leakage	Adjacent / near-duplicate frames from one scene appear in train AND val/test	
+    Group-by metadata before splitting (lesson 6)
+    Розбито по сценах. В тест окреме відео. У валідейшн та трейн не має бути дуплікатів
+
+7	Background images	0–10% of dataset is unlabeled "no objects here" frames	
+    Dataset stats / class histogram (Platform shows the background-image share)
+    12% бекграунду. Треба рохи зменшити, але ок
+
+Visual audit: nothing fixed.
+Duplicates removed: 0
+Leakage check: Розбито по сценах. В тест окреме відео. У валідейшн та трейн не має бути дуплікатів
+Class imbalance: Дуже сильний імбаланс ФПВ більше в 70 разів.
+    Треба виправити в майбтньому
+Ready to train: yes.

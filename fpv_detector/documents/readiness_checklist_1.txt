@@ -1,0 +1,70 @@
+# Ultralytics — Dataset Readiness Checklist
+
+Project: fpv_detector
+Owner:   Dmytro Ponzel
+Date:    16.09.2026
+
+## 1. What are we detecting?
+   Vision task: detect
+   Class list:  fpv, bird
+   Class definitions written? yes
+
+## 2. Where will the model run?
+   Edge (Jetson/Pi)
+   Latency target: 33 ms   Min hardware: RP5
+
+## 3. What visual variation exists?
+   Times of day:    day, sunset, night
+   Weather:         sunny, cloudy, winter
+   Cameras / sites: iphone cam, IR camera, unknown cameras; backgrounds: Sky, Forest/Trees, Buildings, Ground, Person
+   Operators:       nothing yet
+   Product variants: 3.5", 10", 15", Hexacopters, Octocopters, Ducted
+
+## 4. What edge cases matter?
+   Малорозмірні цілі на великій відстані (100 м): Дрон займає від 5×5 до 15×15 пікселів у кадрі.
+   Візуальне сплутування: Птахи (bird), листя дерев, компресійні артефакти відеопотоку.
+   Перекриття та рух: Частково закритий дрон гілками (occluded), розмиття від високої швидкості (motion blur).
+
+## 5. Do we have negative examples?
+   [x] Yes — 11% of dataset is background images (target 0–10%)
+   Трохи більше ніж треба але не критично
+
+## 6. Are labels consistent?
+   [x] Labeling guide written
+   [] Calibration round done; inter-rater agreement ___%
+   Калібрація проходила та відсотку не знаємо
+   [x] QC notes attached - qc_1
+
+## 7. Did we check for leakage?
+   Split unit: [ ] image  [x] scene  [ ] camera  [ ] day  [ ] location
+   No scene / camera / day appears in more than one split? [ ] yes  [x] no
+   Розбивка не дуже хороша. Замало кадрів.
+
+## 8. Is the test set truly unseen?
+   [x] Locked. Touched only once for go/no-go.
+   [ ] Still being tuned against — STOP, re-split.
+
+## 9. What performance metric defines success?
+   Recall (на 100м)  ≥ 95%   
+   Гарантує, що ми помітимо 19 з 20 дронів на підльоті.
+   
+   Precision (або FPPI) ≥ 92% (або ≤ 0.01)   
+   Гарантує, що турель не буде стріляти по деревах і птахах.
+   
+   mAP@0.5:0.95   ≥ 0.70   
+   Гарантує високу точність координат для наведення ствола.
+   
+   Inference Speed   ≥ 50 FPS (на залізі танка) 
+   Гарантує реакцію системи в реальному часі без затримок.
+---
+
+Volume targets met?
+   [ ] ≥ 1500 images / class
+   [ ] ≥ 10,000 labeled instances / class
+   [x] OR documented exception: зображень замало
+
+Ready to fine-tune Ultralytics YOLO26?
+   [x] Yes — start with the nano checkpoint matching the task selected in #1
+       (detect: `yolo26n.pt`  /  segment: `yolo26n-seg.pt`  /  semantic: `yolo26n-sem.pt`
+        /  pose: `yolo26n-pose.pt`  /  OBB: `yolo26n-obb.pt`  /  classify: `yolo26n-cls.pt`)
+   [ ] No  — fix item ___ first
