@@ -15,13 +15,13 @@ DATASETS_DIR = Path("datasets")
 RUNS_DIR = Path("runs") / "detect"
 
 # Change these four values for the next fine-tuning session.
-OLD_DATASET_YAML = DATASETS_DIR / "fpv_public_datasts_310826" / "data.yaml"
-NEW_DATASET_YAML = DATASETS_DIR / "dataset_3" / "data.yaml"
-BASE_WEIGHTS = RUNS_DIR / "v8n_640_fpv_public_datasts_310826" / "weights" / "best.pt"
-FINE_TUNE_RUN_NAME = "v8n_640_fpv_public_datasts_310826_plus_v8n_640_dataset_3"
+OLD_DATASET_YAML = DATASETS_DIR / "ls_2" / "data.yaml"
+NEW_DATASET_YAML = DATASETS_DIR / "p_4" / "data.yaml"
+BASE_WEIGHTS = RUNS_DIR / "v8x_1040_ls_2" / "weights" / "best.pt"
+FINE_TUNE_RUN_NAME = "v8x_1040_ls_2_plus_p_4"
 
 # All new train images are used. This is the maximum number sampled from the old train split.
-OLD_TRAIN_SAMPLE_SIZE = 3000
+OLD_TRAIN_SAMPLE_SIZE = 0
 RANDOM_SEED = 42
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -184,9 +184,9 @@ def main() -> None:
     print(f"Fine-tuning from: {arguments.weights}")
     YOLO(str(arguments.weights)).train(
         data=str(mixed_yaml),
-        epochs=50,
-        imgsz=640,
-        batch=64,
+        epochs=100,
+        imgsz=1040,
+        batch=4,
         device="cuda",
         cache=True,
         # project=str(RUNS_DIR),
@@ -194,10 +194,10 @@ def main() -> None:
         save=True,
         plots=True,
         workers=0,
-        degrees=15.0,
-        fliplr=0.5,
-        mosaic=1.0,
-        mixup=0.1,
+        # degrees=15.0,
+        # fliplr=0.5,
+        # mosaic=1.0,
+        # mixup=0.1,
     )
 
 

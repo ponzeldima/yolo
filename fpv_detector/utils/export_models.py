@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 
 from ultralytics import YOLO
@@ -5,13 +7,13 @@ import torch
 print(torch.__version__)
 
 
-FOLDER_NAME = "v8n_640_fpv_public_datasts_310826"
+FOLDER_NAME = "v8m_1080_dataset_3"
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-CALIBRATION_FRACTION = 0.10
+CALIBRATION_FRACTION = 1.0
 
 def main():
     print(f"CUDA Available: {torch.cuda.is_available()}")
-    dataset_yaml = PROJECT_DIR / "datasets" / "fpv_public_datasts_310826" / "data.yaml"
+    dataset_yaml = PROJECT_DIR / "datasets" / "dataset_3" / "data.yaml"
     
     best_weights_path = PROJECT_DIR / "runs" / "detect" / FOLDER_NAME / "weights" / "best.pt"
     model = YOLO(best_weights_path) 
@@ -32,9 +34,9 @@ def main():
     model.export(
         format="hailo",
         data=dataset_yaml,
-        name="hailo8l",
-        imgsz=640,
-        fraction=CALIBRATION_FRACTION,
+        name="hailo8",
+        imgsz=800,
+        fraction=CALIBRATION_FRACTION
     )
 
     print("Експорт завершено!")
