@@ -3,7 +3,7 @@ from ultralytics import YOLO
 import torch
 print(torch.__version__)
 
-FOLDER_NAME = "v8x_1040_ls_2"
+FOLDER_NAME = "v26m_640_dataset_4"
 
 def main():
     print(f"CUDA Available: {torch.cuda.is_available()}")
@@ -11,7 +11,7 @@ def main():
     # Шлях до конфігурації вашого датасету (перевірте, щоб він був правильним)
     # mac os
     # dataset_yaml = "/Users/dmytroponzel/Desktop/yolo/fpv_detector/datasets/own/data.yaml"
-    dataset_yaml = "datasets/ls_2/data.yaml"
+    dataset_yaml = "datasets/dataset_4/data.yaml"
     
     # Шлях до останніх збережених ваг (назва папки має збігатися з параметром name у train)
     # mac os
@@ -31,13 +31,13 @@ def main():
     else:
         print("Починаємо нове тренування з нуля...")
         # Завантажуємо чисту модель
-        model = YOLO("yolov8x.pt")  # Використовуємо базову модель YOLOv8x
+        model = YOLO("yolo26m.pt")  # Використовуємо базову модель YOLOv26x
         
         model.train(
             data=dataset_yaml,
             epochs=100,
-            imgsz=1040,
-            batch=4,
+            imgsz=640,
+            batch=16,
             device="cuda",  # Використовуємо GPU (якщо доступний)
             cache=True,        # Використовуємо кешування для прискорення тренування
             name=FOLDER_NAME, # Це ім'я папки, куди будуть зберігатися результати (і файл last.pt)

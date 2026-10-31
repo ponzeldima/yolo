@@ -7,13 +7,13 @@ import torch
 print(torch.__version__)
 
 
-FOLDER_NAME = "v8m_1080_dataset_3"
+FOLDER_NAME = "v26m_640_dataset_4"
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-CALIBRATION_FRACTION = 1.0
+CALIBRATION_FRACTION = 0.01
 
 def main():
     print(f"CUDA Available: {torch.cuda.is_available()}")
-    dataset_yaml = PROJECT_DIR / "datasets" / "dataset_3" / "data.yaml"
+    dataset_yaml = PROJECT_DIR / "datasets" / "dataset_4" / "data.yaml"
     
     best_weights_path = PROJECT_DIR / "runs" / "detect" / FOLDER_NAME / "weights" / "best.pt"
     model = YOLO(best_weights_path) 
@@ -35,7 +35,7 @@ def main():
         format="hailo",
         data=dataset_yaml,
         name="hailo8",
-        imgsz=800,
+        imgsz=640,
         fraction=CALIBRATION_FRACTION
     )
 

@@ -8,12 +8,12 @@ from pathlib import Path
 if __name__ == '__main__':
     freeze_support()
     
-    MODEL_PATH = "models/21/35.pt"                  
+    MODEL_PATH = "models/22/36.pt"                  
     DATA_YAML = "datasets/test_1_3x/data.yaml"       
-    OUTPUT_DIR = "ev_40" 
+    OUTPUT_DIR = "ev_43" 
     RUN_VISUALIZATION = True
     OUTPUT_PATH = Path("runs/detect") / (OUTPUT_DIR + "_visualized")
-    CONF_THRESH = 0.25 
+    CONF_THRESH = 0.09 
 
     # Кольори (BGR): Зелений для Ground Truth, Червоний для Predictions
     GT_COLOR = (0, 255, 0)

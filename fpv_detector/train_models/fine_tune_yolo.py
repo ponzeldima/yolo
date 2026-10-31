@@ -15,10 +15,10 @@ DATASETS_DIR = Path("datasets")
 RUNS_DIR = Path("runs") / "detect"
 
 # Change these four values for the next fine-tuning session.
-OLD_DATASET_YAML = DATASETS_DIR / "ls_2" / "data.yaml"
-NEW_DATASET_YAML = DATASETS_DIR / "p_4" / "data.yaml"
-BASE_WEIGHTS = RUNS_DIR / "v8x_1040_ls_2" / "weights" / "best.pt"
-FINE_TUNE_RUN_NAME = "v8x_1040_ls_2_plus_p_4"
+OLD_DATASET_YAML = DATASETS_DIR / "ls_3" / "data.yaml"
+NEW_DATASET_YAML = DATASETS_DIR / "birds_volovets" / "data.yaml"
+BASE_WEIGHTS = RUNS_DIR / "v26x_1040_ls_3" / "weights" / "best.pt"
+FINE_TUNE_RUN_NAME = "v26x_1040_ls_3_plus_birds_volovets"
 
 # All new train images are used. This is the maximum number sampled from the old train split.
 OLD_TRAIN_SAMPLE_SIZE = 0
@@ -186,7 +186,7 @@ def main() -> None:
         data=str(mixed_yaml),
         epochs=100,
         imgsz=1040,
-        batch=4,
+        batch=2,
         device="cuda",
         cache=True,
         # project=str(RUNS_DIR),
